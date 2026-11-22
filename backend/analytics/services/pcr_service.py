@@ -33,7 +33,7 @@ class PCRService:
         """
         queryset = OptionChainSnapshot.objects.all()
         if symbol:
-            queryset = queryset.filter(symbol=symbol)
+            queryset = queryset.filter(instrument__symbol=symbol)
 
         # Fetch only the timestamp column to minimize memory and I/O overhead
         latest_timestamp = (
