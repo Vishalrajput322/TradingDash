@@ -17,4 +17,14 @@ class OptionChainSnapshot(models.Model):
     timestamp = models.DateTimeField(db_index=True)
    
     class Meta:
-        indexes = [models.Index(fields=["instrument", "timestamp"]),]
+        indexes = [
+            models.Index(
+                fields=["instrument", "timestamp"]
+            ),
+            models.Index(
+                fields=["expiry", "timestamp"]
+            ),
+            models.Index(
+                fields=["strike"]
+            ),
+        ]
