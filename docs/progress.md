@@ -18,6 +18,8 @@ TradingDash is a trading analytics dashboard with a Django REST backend and a Fl
 - NSE index options include NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, and NIFTYNXT50. Selecting an NSE OPTIONS instrument fetches and stores a fresh option-chain snapshot before returning dashboard data.
 - Data-provider loading is exchange-configurable through `MARKET_DATA_PROVIDERS`; NSE stock option-chain requests use the equity contract type.
 - Alert engine and notification integrations.
+- Custom User model (`accounts.User`) and Trader Profile (`accounts.UserProfile`) with automatic profile generation signals.
+- JWT authentication endpoints: `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/me/`, `/api/auth/profile/`.
 - CORS middleware configured for local Flutter web origins (`localhost` and `127.0.0.1`) in debug mode. Additional origins can be configured with `CORS_ALLOWED_ORIGINS`.
 
 MCX and futures feeds are not bundled. The provider interface and snapshot commands are documented in [backend/README.md](../backend/README.md); a compatible provider and its credentials are still needed to populate those products with live data.
@@ -28,11 +30,14 @@ MCX and futures feeds are not bundled. The provider interface and snapshot comma
 - Dashboard cards for PCR, market bias, max pain, and alert count, plus call/put build-up summaries.
 - API client and model parsing for the backend dashboard payload.
 - Responsive metric grid and loading, error, and retry states.
+- JWT authentication client with persistent `shared_preferences` storage, automatic `Bearer` header injection, and silent 401 token refresh in `DioClient`.
+- Full authentication & profile management UI: tabbed `AuthDialog` (Log In / Sign Up), `ProfileDialog` for notification channels (Telegram Chat ID, WhatsApp phone) and default trading preferences, plus dynamic user avatar/status chip on the AppBar.
 
 ## Verification completed
 
-- `flutter analyze` — passed with no issues.
-- `flutter test` — passed.
+- `flutter analyze` — passed with 0 issues.
+- `flutter test` — all 4 tests passed (dashboard models + user/profile models).
+- Backend accounts unit tests (`python manage.py test accounts`) — 3/3 passed.
 - Focused Django dashboard and market-data tests — passed.
 - Django `manage.py check` and migration consistency check using `backend/.venv` — passed.
 - Flutter options and futures payload tests — passed.

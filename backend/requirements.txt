@@ -7,3 +7,4 @@ celery
 redis
 python-dotenv
 python-decouple
+djangorestframework-simplejwt

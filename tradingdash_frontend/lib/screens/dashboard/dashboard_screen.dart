@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/dashboard_overview.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../widgets/auth_dialog.dart';
 import '../../widgets/metric_card.dart';
+import '../../widgets/profile_dialog.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -23,6 +26,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selection = ref.watch(dashboardSelectionProvider);
     final dashboardAsync = ref.watch(dashboardProvider);
+    final authState = ref.watch(authProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -31,10 +35,78 @@ class DashboardScreen extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: [
+          if (authState.isAuthenticated)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: InkWell(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => const ProfileDialog(),
+                ),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: const Color(0xFF3B82F6),
+                        child: Text(
+                          authState.user!.username.isNotEmpty
+                              ? authState.user!.username[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        authState.user!.username,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_drop_down,
+                        size: 18,
+                        color: Colors.white54,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => const AuthDialog(),
+              ),
+              icon: const Icon(Icons.account_circle_outlined, size: 20),
+              label: const Text('Log In'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF3B82F6),
+              ),
+            ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(dashboardProvider),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(

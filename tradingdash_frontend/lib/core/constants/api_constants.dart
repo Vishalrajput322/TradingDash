@@ -8,4 +8,11 @@ class ApiConstants {
 
   static const String dashboardOverview = '/api/analytics/dashboard/overview/';
   static const String dashboardRefresh = '/api/analytics/dashboard/refresh/';
+
+  // Auth endpoints
+  static const String login = '/api/auth/login/';
+  static const String register = '/api/auth/register/';
+  static const String tokenRefresh = '/api/auth/refresh/';
+  static const String me = '/api/auth/me/';
+  static const String profile = '/api/auth/profile/';
 }
