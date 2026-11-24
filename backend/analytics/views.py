@@ -1,6 +1,8 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -10,9 +12,12 @@ from analytics.services.max_pain_service import MaxPainService
 from analytics.services.oi_change_service import OIChangeService
 from analytics.services.pcr_service import PCRService
 from analytics.services.smart_money_flow_service import SmartMoneyFlowService
-
-from rest_framework import status
 from analytics.services.dashboard_service import DashboardService
+from analytics.services.futures_dashboard_service import FuturesDashboardService
+from market_data.models import Instrument
+from market_data.services.option_chain_service import fetch_option_chain_snapshot
+
+logger = logging.getLogger(__name__)
 
 def _parse_symbol(request: Request) -> str:
     return request.query_params.get("symbol", "NIFTY").strip().upper()
@@ -114,15 +119,30 @@ class SmartMoneyFlowAPIView(APIView):
 class DashboardOverviewAPIView(APIView):
 
     def get(self, request):
+        symbol = _parse_symbol(request)
+        exchange = request.query_params.get("exchange", "NSE").strip().upper()
+        product = request.query_params.get("product", "OPTIONS").strip().upper()
+        if exchange not in ("NSE", "MCX"):
+            return Response(
+                {"detail": "Unsupported exchange. Use NSE or MCX."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        symbol = request.query_params.get(
-            "symbol",
-            "NIFTY"
-        )
-
-        data = DashboardService.get_dashboard(
-            symbol=symbol
-        )
+        if product == "OPTIONS":
+            data = DashboardService.get_dashboard(
+                symbol=symbol,
+                exchange=exchange,
+            )
+        elif product == "FUTURES":
+            data = FuturesDashboardService.get_dashboard(
+                symbol=symbol,
+                exchange=exchange,
+            )
+        else:
+            return Response(
+                {"detail": "Unsupported product. Use OPTIONS or FUTURES."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if "error" in data:
             return Response(
@@ -134,3 +154,52 @@ class DashboardOverviewAPIView(APIView):
             data,
             status=status.HTTP_200_OK
         )
+
+
+class DashboardRefreshAPIView(APIView):
+    def post(self, request: Request) -> Response:
+        if not isinstance(request.data, dict):
+            return Response(
+                {"detail": "A valid symbol is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        symbol = request.data.get("symbol", "")
+        if not isinstance(symbol, str) or not symbol.strip():
+            return Response(
+                {"detail": "A valid symbol is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        symbol = symbol.strip().upper()
+
+        try:
+            instrument = Instrument.objects.get(
+                symbol=symbol,
+                exchange=Instrument.Exchange.NSE,
+                asset_class=Instrument.AssetClass.INDEX,
+                is_active=True,
+            )
+        except Instrument.DoesNotExist:
+            return Response(
+                {"detail": f"No active NSE index instrument found for '{symbol}'."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            fetch_option_chain_snapshot(instrument)
+        except (RuntimeError, ValueError) as exc:
+            logger.exception("Failed to refresh option chain for %s", symbol)
+            return Response(
+                {"detail": f"Unable to fetch option-chain data for '{symbol}': {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        cache.delete(f"dashboard_overview:NSE:{symbol}")
+        data = DashboardService.get_dashboard(
+            symbol=symbol,
+            exchange=Instrument.Exchange.NSE,
+            use_cache=False,
+        )
+        if "error" in data:
+            return Response(data, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(data, status=status.HTTP_200_OK)

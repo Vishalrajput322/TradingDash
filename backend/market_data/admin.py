@@ -1,3 +1,5 @@
 from django.contrib import admin
+from market_data.models import Instrument, OptionExpiry
 
-# Register your models here.
+admin.site.register(Instrument)
+admin.site.register(OptionExpiry)

@@ -2,6 +2,8 @@ django
 djangorestframework
 psycopg2-binary
 django-cors-headers
+django-celery-beat
 celery
 redis
 python-dotenv
+python-decouple

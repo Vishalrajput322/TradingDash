@@ -28,3 +28,18 @@ class OptionChainSnapshot(models.Model):
                 fields=["strike"]
             ),
         ]
+
+
+class FuturesSnapshot(models.Model):
+    instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE)
+    expiry_date = models.DateField()
+    last_price = models.DecimalField(max_digits=14, decimal_places=4)
+    open_interest = models.BigIntegerField(default=0)
+    oi_change = models.BigIntegerField(default=0)
+    volume = models.BigIntegerField(default=0)
+    timestamp = models.DateTimeField(db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["instrument", "expiry_date", "timestamp"]),
+        ]

@@ -1,11 +1,13 @@
-from datetime import datetime
 import logging
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DatabaseError, transaction
 
 from market_data.models import Instrument, OptionExpiry
-from market_data.services.nse_service import NSEClient
+from market_data.services.providers import (
+    get_market_data_provider,
+    parse_expiry_date,
+)
 from options.services.snapshot_service import SnapshotService
 
 logger = logging.getLogger(__name__)
@@ -54,21 +56,26 @@ class Command(BaseCommand):
                 logger.exception("Database error while loading instrument %s", symbol)
                 raise CommandError(f"Database error loading instrument '{symbol}': {db_exc}") from db_exc
 
-        client = NSEClient()
+        try:
+            client = get_market_data_provider(instrument.exchange)
+        except Exception as exc:
+            raise CommandError(
+                f"Unable to load {instrument.exchange} market data provider: {exc}"
+            ) from exc
         snapshot_service = SnapshotService()
 
         try:
             if requested_expiry:
-                data, expiry_str = client.option_chain(symbol, expiry=requested_expiry)
+                data, expiry_str = client.option_chain(
+                    symbol,
+                    expiry=requested_expiry,
+                    asset_class=instrument.asset_class,
+                )
             else:
-                data, expiry_str = client.option_chain(symbol)
-        except TypeError:
-            # Fallback if NSEClient.option_chain(symbol) does not accept an `expiry` keyword arg
-            try:
-                data, expiry_str = client.option_chain(symbol)
-            except Exception as exc:
-                logger.exception("Failed to fetch option chain data for %s", symbol)
-                raise CommandError(f"Failed to fetch option chain for {symbol}: {exc}") from exc
+                data, expiry_str = client.option_chain(
+                    symbol,
+                    asset_class=instrument.asset_class,
+                )
         except Exception as exc:
             logger.exception("Failed to fetch option chain data for %s", symbol)
             raise CommandError(f"Failed to fetch option chain for {symbol}: {exc}") from exc
@@ -77,7 +84,7 @@ class Command(BaseCommand):
             raise CommandError(f"Empty option chain response returned for {symbol} (expiry={expiry_str!r}).")
 
         try:
-            expiry_date = datetime.strptime(expiry_str.strip(), "%d-%b-%Y").date()
+            expiry_date = parse_expiry_date(expiry_str)
         except ValueError as exc:
             raise CommandError(f"Unexpected expiry date format '{expiry_str}' for {symbol}.") from exc
 

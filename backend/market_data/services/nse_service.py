@@ -99,6 +99,7 @@ class NSEClient:
         self,
         symbol: str = "NIFTY",
         expiry: Optional[str] = None,
+        asset_class: str = "INDEX",
         retries: int = 3,
     ) -> tuple[dict, str]:
         """
@@ -109,6 +110,10 @@ class NSEClient:
         """
 
         symbol = symbol.upper()
+        if asset_class not in ("INDEX", "EQUITY"):
+            raise ValueError(
+                f"NSE option chains do not support asset class '{asset_class}'."
+            )
 
         last_error = None
 
@@ -126,7 +131,7 @@ class NSEClient:
                 data = self._get_json(
                     self.CHAIN_URL,
                     {
-                        "type": "Indices",
+                        "type": "Indices" if asset_class == "INDEX" else "Equities",
                         "symbol": symbol,
                         "expiry": selected_expiry,
                     },

@@ -1,3 +1,5 @@
 from django.contrib import admin
+from options.models import FuturesSnapshot, OptionChainSnapshot
 
-# Register your models here.
+admin.site.register(FuturesSnapshot)
+admin.site.register(OptionChainSnapshot)
