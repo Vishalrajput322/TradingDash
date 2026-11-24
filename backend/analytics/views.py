@@ -11,6 +11,8 @@ from analytics.services.oi_change_service import OIChangeService
 from analytics.services.pcr_service import PCRService
 from analytics.services.smart_money_flow_service import SmartMoneyFlowService
 
+from rest_framework import status
+from analytics.services.dashboard_service import DashboardService
 
 def _parse_symbol(request: Request) -> str:
     return request.query_params.get("symbol", "NIFTY").strip().upper()
@@ -107,3 +109,28 @@ class SmartMoneyFlowAPIView(APIView):
             )
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+class DashboardOverviewAPIView(APIView):
+
+    def get(self, request):
+
+        symbol = request.query_params.get(
+            "symbol",
+            "NIFTY"
+        )
+
+        data = DashboardService.get_dashboard(
+            symbol=symbol
+        )
+
+        if "error" in data:
+            return Response(
+                data,
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(
+            data,
+            status=status.HTTP_200_OK
+        )
